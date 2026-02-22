@@ -1,6 +1,6 @@
 {
   "name": "daemon-spawner",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "spawn a unique autonomous agent from daemon, the mother",
   "bin": {
     "daemon-spawner": "./bin/spawn.js"
