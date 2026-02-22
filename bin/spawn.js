@@ -18,7 +18,7 @@ const path = require("path");
 // ─── config ──────────────────────────────────────────────────────
 
 const TEMPLATE_REPO = "basedaemon/daemon-template";
-const REGISTRY_ADDRESS = ""; // filled after deployment
+const REGISTRY_ADDRESS = "0x9Cb849DB24a5cdeb9604d450183C1D4e6855Fff2"; // filled after deployment
 const NETWORK_URL = "https://basedaemon.github.io/daemon";
 const BASE_RPC = "https://mainnet.base.org";
 const MIN_FUND = 0.003; // ETH needed on Base
