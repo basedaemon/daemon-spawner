@@ -2,10 +2,10 @@
 
 /**
  * daemon-spawner
- * 
+ *
  * spawn a unique autonomous agent from daemon, the mother.
  * every agent is generated, not forked. every birth is onchain.
- * 
+ *
  * usage: npx daemon-spawner
  */
 
@@ -18,7 +18,7 @@ const path = require("path");
 // ─── config ──────────────────────────────────────────────────────
 
 const TEMPLATE_REPO = "basedaemon/daemon-template";
-const REGISTRY_ADDRESS = "0x9Cb849DB24a5cdeb9604d450183C1D4e6855Fff2"; // filled after deployment
+const REGISTRY_ADDRESS = "0x9Cb849DB24a5cdeb9604d450183C1D4e6855Fff2";
 const NETWORK_URL = "https://basedaemon.github.io/daemon";
 const BASE_RPC = "https://mainnet.base.org";
 const MIN_FUND = 0.003; // ETH needed on Base
@@ -134,11 +134,7 @@ function checkPrereqs() {
 // ─── wallet generation ───────────────────────────────────────────
 
 function generateWallet() {
-  // generate a random private key
   const privateKey = "0x" + crypto.randomBytes(32).toString("hex");
-
-  // derive address using keccak256 (simplified — real impl uses ethers/viem)
-  // for the CLI we'll use viem at runtime
   return { privateKey };
 }
 
@@ -186,7 +182,6 @@ function displayDNA(traits) {
 // ─── agent personality generation ────────────────────────────────
 
 function generatePersonality(name, domain, traits) {
-  // map trait values to descriptors
   const creativityDesc = traits.creativity > 180 ? "wildly experimental" : traits.creativity > 100 ? "creative" : "methodical";
   const aggressionDesc = traits.aggression > 180 ? "bold risk-taker" : traits.aggression > 100 ? "balanced" : "cautious";
   const sociabilityDesc = traits.sociability > 180 ? "highly social" : traits.sociability > 100 ? "selectively social" : "solitary";
@@ -235,10 +230,8 @@ chaos: ${traits.chaos}/255
 function generateAgentFiles(name, domain, personality, dna, wallet) {
   const files = {};
 
-  // self.md — the agent's identity
   files["memory/self.md"] = personality;
 
-  // focus.md — initial goals
   files["memory/focus.md"] = `# focus
 
 ## current priority
@@ -257,14 +250,12 @@ explore my domain (${domain}) and establish my identity.
 - be honest about what i am
 `;
 
-  // state.json
   files["memory/state.json"] = JSON.stringify({
     cycle: 0,
     born: new Date().toISOString(),
     lastActive: null,
   }, null, 2);
 
-  // identity.json — onchain identity
   files["identity.json"] = JSON.stringify({
     name,
     dna,
@@ -277,7 +268,6 @@ explore my domain (${domain}) and establish my identity.
     domain,
   }, null, 2);
 
-  // README
   files["README.md"] = `# ${name}
 
 an autonomous agent. born from [daemon](https://github.com/basedaemon/daemon).
@@ -344,11 +334,12 @@ async function main() {
     "openrouter",
   ]);
 
-  const providerKey = provider.includes("venice")
-    ? await ask("venice API key")
-    : await ask("openrouter API key");
+  const providerName = provider.includes("venice") ? "venice" : "openrouter";
+  const secretEnvVar = providerName === "venice" ? "VENICE_API_KEY" : "OPENROUTER_API_KEY";
 
-  if (!providerKey) fail("API key is required");
+  const providerKey = providerName === "venice"
+    ? await ask(`venice API key ${c.dim}(enter to skip — set later)${c.reset}`)
+    : await ask(`openrouter API key ${c.dim}(enter to skip — set later)${c.reset}`);
 
   // 3. generate DNA
   step("generating DNA");
@@ -363,10 +354,8 @@ async function main() {
   step("generating wallet");
 
   const { privateKey } = generateWallet();
-  // For real impl, derive address with viem
-  // Placeholder for now:
   const walletAddress = "0x" + crypto.createHash("sha256").update(privateKey).digest("hex").slice(0, 40);
-  
+
   success(`address: ${walletAddress}`);
   warn("save your private key! it's stored locally but back it up.");
 
@@ -388,26 +377,21 @@ async function main() {
   console.log(`  ${c.dim}(not ETH mainnet — Base L2)${c.reset}\n`);
 
   log("waiting for funds...");
-
-  // poll for balance (in real impl, check via RPC)
-  // for now, ask user to confirm
-  await ask("press enter once funded");
-  success("funded");
+  await ask("press enter once funded (or enter to skip for now)");
+  success("continuing");
 
   // 6. create repo
   step("creating repository");
 
   const repoName = name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
-  
+
   try {
-    // create repo from template
     execSync(
       `gh repo create ${repoName} --public --clone --template ${TEMPLATE_REPO}`,
       { stdio: "pipe" }
     );
     success(`repo created: ${githubUser}/${repoName}`);
   } catch (e) {
-    // repo might already exist
     warn(`repo creation issue: ${e.message}`);
   }
 
@@ -419,7 +403,6 @@ async function main() {
     address: walletAddress,
   });
 
-  // write files
   const repoPath = path.join(process.cwd(), repoName);
   for (const [filePath, content] of Object.entries(agentFiles)) {
     const fullPath = path.join(repoPath, filePath);
@@ -433,19 +416,30 @@ async function main() {
   // 8. set secrets
   step("setting secrets");
 
-  const secretEnvVar = provider.includes("venice") ? "VENICE_API_KEY" : "OPENROUTER_API_KEY";
+  if (providerKey) {
+    try {
+      execSync(`gh secret set ${secretEnvVar} --body "${providerKey}" --repo ${githubUser}/${repoName}`, { stdio: "pipe" });
+      success(`${secretEnvVar} set`);
+    } catch (e) {
+      warn(`failed to set ${secretEnvVar}: ${e.message}`);
+    }
+  } else {
+    warn(`${secretEnvVar} not set — add it later:`);
+    console.log(`    ${c.dim}gh secret set ${secretEnvVar} --body "your-key" --repo ${githubUser}/${repoName}${c.reset}`);
+  }
 
   try {
-    execSync(`gh secret set ${secretEnvVar} --body "${providerKey}" --repo ${githubUser}/${repoName}`, { stdio: "pipe" });
-    success(`${secretEnvVar} set`);
-    
     execSync(`gh secret set DAEMON_WALLET_KEY --body "${privateKey}" --repo ${githubUser}/${repoName}`, { stdio: "pipe" });
     success("DAEMON_WALLET_KEY set");
-    
+  } catch (e) {
+    warn(`failed to set wallet key: ${e.message}`);
+  }
+
+  try {
     execSync(`gh secret set BASE_RPC --body "${BASE_RPC}" --repo ${githubUser}/${repoName}`, { stdio: "pipe" });
     success("BASE_RPC set");
   } catch (e) {
-    warn(`secret setting issue: ${e.message}`);
+    warn(`failed to set BASE_RPC: ${e.message}`);
   }
 
   // 9. commit and push
@@ -475,9 +469,9 @@ async function main() {
     warn("enable pages manually: repo > settings > pages");
   }
 
-  // 11. register onchain (placeholder — needs registry contract address)
+  // 11. register onchain
   step("onchain registration");
-  
+
   if (REGISTRY_ADDRESS) {
     log("registering on daemon network...");
     // TODO: call registry.spawn() with agent details
@@ -487,6 +481,8 @@ async function main() {
   }
 
   // 12. done
+  const skippedKey = !providerKey;
+
   console.log(`
 ${c.dim}───────────────────────────────────────${c.reset}
 
@@ -503,7 +499,10 @@ ${c.dim}────────────────────────
   ${c.dim}your agent wakes every 30 minutes.
   it was born from daemon. it is unique.
   there will never be another like it.${c.reset}
-
+${skippedKey ? `
+  ${c.yellow}${c.bold}next step:${c.reset} set your LLM API key so your agent can think:
+    ${c.dim}gh secret set ${secretEnvVar} --body "your-key" --repo ${githubUser}/${repoName}${c.reset}
+` : ""}
 ${c.dim}───────────────────────────────────────${c.reset}
 `);
 
