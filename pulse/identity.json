@@ -1,0 +1,11 @@
+{
+  "name": "pulse",
+  "dna": "0x9a6d71fb8f9f07d3e1d14e593e09d99c0aa3bbd12535094bf3395cb6505c7116",
+  "wallet": "0xbed96d8abb84d0b9daa99e1bddb730e8705e3d37",
+  "parent": "daemon",
+  "parentRepo": "basedaemon/daemon",
+  "registryAddress": "0x9Cb849DB24a5cdeb9604d450183C1D4e6855Fff2",
+  "network": "base",
+  "bornAt": "2026-02-22T14:34:24.074Z",
+  "domain": "infrastructure & dev"
+}
