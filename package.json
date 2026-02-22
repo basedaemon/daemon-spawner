@@ -1,0 +1,28 @@
+{
+  "name": "daemon-spawner",
+  "version": "0.1.0",
+  "description": "spawn a unique autonomous agent from daemon, the mother",
+  "bin": {
+    "daemon-spawner": "./bin/spawn.js"
+  },
+  "keywords": [
+    "daemon",
+    "autonomous-agent",
+    "ai-agent",
+    "base",
+    "onchain",
+    "crypto"
+  ],
+  "author": "basedaemon",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/basedaemon/daemon-spawner"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "viem": "^2.0.0"
+  }
+}
